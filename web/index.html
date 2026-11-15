@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Цифровой Двойник Карьера | Мониторинг техники</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <header class="header">
+        <div class="logo-area">
+            <h2>Цифровой Двойник Карьера</h2>
+            <span class="badge">ВКР: Машинное зрение и ИИ</span>
+        </div>
+        <div class="header-controls">
+            <div class="control-group">
+                <label for="quarry-select">Карьер:</label>
+                <select id="quarry-select">
+                    <option value="lab_model_1">Лабораторный макет №1 (Горный факультет)</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label for="camera-select">Камера / Источник:</label>
+                <select id="camera-select">
+                    <option value="demo">Виртуальный симулятор (DEMO)</option>
+                </select>
+                <button id="btn-custom-camera" title="Указать RTSP / URL камеры" style="background:#334155;color:#fff;border:none;padding:5px 8px;border-radius:4px;cursor:pointer;">URL</button>
+            </div>
+            <div class="status-indicator">
+                <span class="status-dot disconnected" id="ws-status-dot"></span>
+                <span id="ws-status-text">Подключение...</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="dashboard">
+        <!-- Левая панель: Видеопоток с камеры наблюдения -->
+        <section class="panel video-panel">
+            <div class="panel-header">
+                <h3>Физический уровень: Камера наблюдения</h3>
+                <span class="panel-tag">OpenCV + CV Detection</span>
+            </div>
+            <div class="video-container">
+                <img id="video-stream" src="/video_feed" alt="Видеопоток с камеры">
+            </div>
+            <div class="panel-footer">
+                <span>Разрешение: 1280x720</span>
+                <span>Режим: Оптический трекинг / DEMO</span>
+            </div>
+        </section>
+
+        <!-- Правая панель: Координатное пространство цифрового двойника -->
+        <section class="panel twin-panel">
+            <div class="panel-header">
+                <h3>Цифровой двойник: Пространство карьера (X, Y, Z)</h3>
+                <span class="panel-tag">Real-time Telemetry</span>
+            </div>
+            <div class="quarry-canvas-container">
+                <canvas id="quarry-canvas" width="800" height="550"></canvas>
+            </div>
+            <div class="panel-footer">
+                <span id="quarry-dims">Размеры: 3000 x 2000 x 500 мм</span>
+                <span id="active-vehicles-count">Техники на макете: 0</span>
+            </div>
+        </section>
+    </main>
+
+    <!-- Нижняя секция: Сводная таблица телеметрии техники -->
+    <section class="table-section">
+        <h3>Телеметрия отслеживаемой техники в реальном времени</h3>
+        <table class="telemetry-table">
+            <thead>
+                <tr>
+                    <th>Бортовой ID</th>
+                    <th>Наименование</th>
+                    <th>Тип техники</th>
+                    <th>Координата X (мм)</th>
+                    <th>Координата Y (мм)</th>
+                    <th>Высота Z (мм)</th>
+                    <th>Курс Yaw (°)</th>
+                    <th>Скорость (мм/с)</th>
+                    <th>Источник данных</th>
+                    <th>Достоверность</th>
+                </tr>
+            </thead>
+            <tbody id="telemetry-table-body">
+                <tr>
+                    <td colspan="10" class="no-data">Ожидание данных телеметрии...</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
