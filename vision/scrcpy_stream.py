@@ -37,8 +37,8 @@ class ScrcpyCameraStream:
     def __init__(self, camera_id: int = 0, scrcpy_path: Optional[str] = None):
         self.camera_id = camera_id
         self.scrcpy_path = scrcpy_path or DEFAULT_SCRCPY_PATH
-        # Уникальный заголовок окна для каждого запуска во избежание захвата старых зомби-окон
-        self.window_title = f"QuarryTwin_PhoneCamera_{os.getpid()}_{int(time.time())}"
+        # Человекочитаемый заголовок окна, чтобы пользователь видел его на рабочем столе
+        self.window_title = f"Камера смартфона (Цифровой Двойник) #{os.getpid()}"
         
         self.process: Optional[subprocess.Popen] = None
         self.hwnd: Optional[int] = None
@@ -82,8 +82,6 @@ class ScrcpyCameraStream:
             "--video-codec=h264",
             "--video-encoder=c2.android.avc.encoder",
             "--render-driver=software",
-            "--window-x=-2000",
-            "--window-y=-2000",
             f"--window-title={self.window_title}",
             "--window-width=640",
             "--window-height=480",
@@ -149,8 +147,8 @@ class ScrcpyCameraStream:
                 saveBitMap.CreateCompatibleBitmap(mfcDC, w, h)
                 saveDC.SelectObject(saveBitMap)
 
-                # Захват содержимого окна с флагом PW_RENDERFULLCONTENT (2)
-                user32.PrintWindow(self.hwnd, saveDC.GetSafeHdc(), 2)
+                # Захват содержимого окна в память (флаг 0 для GDI совместимости)
+                user32.PrintWindow(self.hwnd, saveDC.GetSafeHdc(), 0)
 
                 bmpinfo = saveBitMap.GetInfo()
                 bmpstr = saveBitMap.GetBitmapBits(True)
