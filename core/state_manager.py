@@ -21,6 +21,17 @@ from database.models import QuarryModel, TelemetryLogModel, VehicleModel
 logger = logging.getLogger("StateManager")
 
 
+# Соответствие ArUco-меток типам карьерной техники согласно печатному бланку
+MARKER_VEHICLE_MAPPING = {
+    "marker_0": ("Самосвал БелАЗ-75131", VehicleType.DUMP_TRUCK),
+    "marker_1": ("Экскаватор ЭКГ-18Р", VehicleType.EXCAVATOR),
+    "marker_2": ("Буровой станок СБШ-250", VehicleType.DRILL_RIG),
+    "marker_3": ("Бульдозер ЧЕТРА Т-35", VehicleType.BULLDOZER),
+    "marker_4": ("Погрузчик БелАЗ-7822", VehicleType.LOADER),
+    "marker_5": ("Сервисный автомобиль", VehicleType.GENERIC_VEHICLE),
+}
+
+
 class QuarryStateManager:
     """
     Класс управления состоянием конкретного карьера.
@@ -77,11 +88,17 @@ class QuarryStateManager:
         now = time.time()
 
         if vehicle_id not in self.vehicles:
+            # Получаем паспортное название и тип техники по справочнику меток
+            vehicle_name, vehicle_type = MARKER_VEHICLE_MAPPING.get(
+                vehicle_id,
+                (f"Техника #{vehicle_id}", VehicleType.DUMP_TRUCK)
+            )
+
             # Автоматическая регистрация нового обнаруженного объекта
             self.register_vehicle(
                 vehicle_id=vehicle_id,
-                name=f"Машинка-{vehicle_id}",
-                v_type=VehicleType.DUMP_TRUCK,
+                name=vehicle_name,
+                v_type=vehicle_type,
                 init_x=raw_x,
                 init_y=raw_y,
                 init_z=raw_z

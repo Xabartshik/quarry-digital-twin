@@ -26,11 +26,16 @@ let socket = null;
 const trajectoryHistory = {};
 const MAX_TRAIL_POINTS = 30;
 
-// Цвета для разных единиц техники
+// Цвета для разных единиц техники (согласно паспорту меток макета)
 const vehicleColors = {
-    "marker_0": "#38bdf8", // Самосвал (голубой)
-    "marker_1": "#22c55e", // Экскаватор (зеленый)
-    "truck_01": "#f59e0b", // Оранжевый
+    "marker_0": "#38bdf8", // Самосвал БелАЗ (голубой)
+    "marker_1": "#22c55e", // Экскаватор ЭКГ (зеленый)
+    "marker_2": "#eab308", // Буровой станок СБШ (желтый)
+    "marker_3": "#f97316", // Бульдозер ЧЕТРА (оранжевый)
+    "marker_4": "#a855f7", // Погрузчик БелАЗ (фиолетовый)
+    "marker_5": "#ec4899", // Сервисный автомобиль (розовый)
+    "truck_01": "#38bdf8",
+    "excavator_01": "#22c55e",
     "default": "#e2e8f0"
 };
 
@@ -248,7 +253,7 @@ function updateTable(vehicles) {
         <tr style="${isVis ? '' : 'opacity: 0.65;'}">
             <td><strong>${v.id}</strong></td>
             <td>${v.name}</td>
-            <td><span class="badge">${v.vehicle_type}</span></td>
+            <td><span class="badge badge-${v.vehicle_type.toLowerCase()}">${v.vehicle_type}</span></td>
             <td>${v.position.x.toFixed(1)}</td>
             <td>${v.position.y.toFixed(1)}</td>
             <td>${v.position.z.toFixed(1)}</td>
@@ -281,6 +286,15 @@ async function loadAvailableCameras() {
         demoOpt.textContent = "Виртуальный симулятор (DEMO)";
         if (data.is_demo_mode) demoOpt.selected = true;
         cameraSelect.appendChild(demoOpt);
+
+        // Опция IP-камеры смартфона (по умолчанию)
+        const ipCamOpt = document.createElement("option");
+        ipCamOpt.value = "http://192.168.0.103:8080/video";
+        ipCamOpt.textContent = "📡 IP-камера смартфона (192.168.0.103:8080)";
+        if (!data.is_demo_mode && data.current_source === "http://192.168.0.103:8080/video") {
+            ipCamOpt.selected = true;
+        }
+        cameraSelect.appendChild(ipCamOpt);
 
         // Опция Android телефона через scrcpy по USB кабелю (без приложений)
         const scrcpyOpt = document.createElement("option");

@@ -42,13 +42,13 @@ class Settings(BaseModel):
     # Настройки базы данных SQLite по умолчанию
     DB_URL: str = f"sqlite:///{DATA_DIR / 'quarry_twin.db'}"
 
-    # Настройки видеопотока: 'scrcpy' для Android телефона по USB, 0 для веб-камеры
-    CAMERA_SOURCE: int | str = "scrcpy"
+    # Настройки видеопотока по умолчанию: IP-камера смартфона
+    CAMERA_SOURCE: int | str = "http://192.168.0.103:8080/video"
     CAMERA_FPS: int = 30
     FRAME_WIDTH: int = 1280
     FRAME_HEIGHT: int = 720
 
-    # Режим симуляции (по умолчанию выключаем, чтобы сразу стартовал телефон)
+    # Режим симуляции (по умолчанию выключен, чтобы сразу шла прямая трансляция с камеры)
     DEMO_MODE: bool = False
 
     # Частота отправки телеметрии по WebSocket (Гц)

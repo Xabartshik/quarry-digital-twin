@@ -109,4 +109,13 @@ class VehicleKalmanFilter:
         # Полная пространственная скорость (мм/с)
         speed = float(np.sqrt(vx**2 + vy**2 + vz**2))
 
+        # Порог зоны нечувствительности (Deadband Threshold):
+        # Оптический шум пикселей камеры при неподвижном маркере составляет 0.2-1.2 мм/с.
+        # Если скорость ниже 1.5 мм/с, объект считается строго неподвижным в покое.
+        if speed < 1.5:
+            speed = 0.0
+            self.state[3, 0] = 0.0
+            self.state[4, 0] = 0.0
+            self.state[5, 0] = 0.0
+
         return filtered_x, filtered_y, filtered_z, speed

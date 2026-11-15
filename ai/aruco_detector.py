@@ -16,15 +16,15 @@ logger = logging.getLogger("ArucoDetector")
 
 class ArucoDetector(BaseDetector):
     """
-    Класс оптического детектора меток ArUco.
+    Класс оптического детектора меток ArUco с компенсацией высоты камеры (Z-Scaling).
     """
 
-    def __init__(self, marker_size_mm: float = 40.0,
+    def __init__(self, marker_size_mm: float = 48.0,
                  quarry_width_mm: float = 2000.0,
                  quarry_length_mm: float = 3000.0,
                  quarry_depth_mm: float = 500.0):
         """
-        :param marker_size_mm: физический размер стороны маркера на крыше машинки (в мм)
+        :param marker_size_mm: физический размер внешнего чёрного контура маркера (в мм)
         :param quarry_width_mm, quarry_length_mm, quarry_depth_mm: размеры макета карьера
         """
         self.marker_size_mm = marker_size_mm
@@ -32,7 +32,7 @@ class ArucoDetector(BaseDetector):
         self.quarry_length_mm = quarry_length_mm
         self.quarry_depth_mm = quarry_depth_mm
 
-        # Инициализация словаря ArUco маркеров (DICT_4X4_50 или DICT_6X6_50)
+        # Инициализация словаря ArUco маркеров (DICT_4X4_50)
         self.aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
         self.parameters = cv2.aruco.DetectorParameters()
         self.detector = cv2.aruco.ArucoDetector(self.aruco_dict, self.parameters)
@@ -41,7 +41,8 @@ class ArucoDetector(BaseDetector):
 
     def detect(self, frame: np.ndarray) -> list[DetectionResult]:
         """
-        Обнаруживает маркеры ArUco на кадре и рассчитывает координаты.
+        Обнаруживает маркеры ArUco на кадре и рассчитывает метрические координаты
+        с компенсацией расстояния до камеры (инвариантность масштаба по Z).
         """
         results: list[DetectionResult] = []
         if frame is None or frame.size == 0:
@@ -54,42 +55,60 @@ class ArucoDetector(BaseDetector):
             return results
 
         h, w = frame.shape[:2]
+        # Центр оптической оси камеры (принципиальная точка)
+        cx0 = w / 2.0
+        cy0 = h / 2.0
+        # Эквивалентное фокусное расстояние стандартной камеры смартфона (в пикселях при угле обзора ~65-70 градусов)
+        focal_length = w * 1.15
 
         for i, marker_id in enumerate(ids.flatten()):
             c = corners[i][0]  # 4 угла маркера [[x1, y1], [x2, y2], [x3, y3], [x4, y4]]
 
             # Координаты центра маркера на пиксельной сетке кадра
-            center_x = int(np.mean(c[:, 0]))
-            center_y = int(np.mean(c[:, 1]))
+            center_x = float(np.mean(c[:, 0]))
+            center_y = float(np.mean(c[:, 1]))
 
             # Ограничивающий прямоугольник (bounding box)
             x_min, y_min = int(np.min(c[:, 0])), int(np.min(c[:, 1]))
             x_max, y_max = int(np.max(c[:, 0])), int(np.max(c[:, 1]))
 
-            # Вычисление угла поворота маркера (угол между верхними точками c[0] и c[1])
+            # Вычисление угла поворота маркера (рыскание Yaw)
             dx = c[1][0] - c[0][0]
             dy = c[1][1] - c[0][1]
             yaw_deg = float(np.degrees(np.arctan2(dy, dx)))
 
-            # Масштабирование пиксельных координат в координаты пространства карьера (мм)
-            # При съемке сверху: X вдоль длины, Y вдоль ширины
-            pos_x_mm = float((center_x / max(1, w)) * self.quarry_length_mm)
-            pos_y_mm = float((center_y / max(1, h)) * self.quarry_width_mm)
+            # 1. Оценка видимого размера маркера в пикселях по 4 сторонам квадрата
+            side_1 = np.linalg.norm(c[1] - c[0])
+            side_2 = np.linalg.norm(c[2] - c[1])
+            side_3 = np.linalg.norm(c[3] - c[2])
+            side_4 = np.linalg.norm(c[0] - c[3])
+            marker_px_size = max(1.0, float((side_1 + side_2 + side_3 + side_4) / 4.0))
 
-            # Вычисление псевдо-высоты (Z) по размеру маркера в пикселях:
-            # чем ближе машинка к верхней камере (выше на уступе), тем маркер крупнее
-            marker_px_size = np.linalg.norm(c[1] - c[0])
-            expected_px = 60.0  # эталонный размер на дне карьера
-            # Смещение по Z (высота уступа от дна карьера)
-            pos_z_mm = float(max(0.0, min(self.quarry_depth_mm, (marker_px_size - expected_px) * 8.0)))
+            # 2. Вычисление физического расстояния от камеры до плоскости метки (Z в мм)
+            # Формула перспективной проекции: Z = (Focal_Length * Real_Size_mm) / Px_Size
+            distance_z_mm = (focal_length * self.marker_size_mm) / marker_px_size
+
+            # 3. Метрическая компенсация смещения от центра оптической оси (в миллиметрах)
+            # mm_per_px строго пропорционален расстоянию Z: при приближении камеры (Z падает) mm_per_px уменьшается!
+            mm_per_px = self.marker_size_mm / marker_px_size
+            offset_x_mm = (center_x - cx0) * mm_per_px
+            offset_y_mm = (center_y - cy0) * mm_per_px
+
+            # 4. Привязка к глобальной системе координат карьера (центр макета: X=1500 мм, Y=1000 мм)
+            pos_x_mm = (self.quarry_length_mm / 2.0) + offset_x_mm
+            pos_y_mm = (self.quarry_width_mm / 2.0) + offset_y_mm
+
+            # Ограничение физическими границами карьера
+            pos_x_mm = float(max(0.0, min(self.quarry_length_mm, pos_x_mm)))
+            pos_y_mm = float(max(0.0, min(self.quarry_width_mm, pos_y_mm)))
 
             results.append(DetectionResult(
                 object_id=f"marker_{marker_id}",
                 label=f"Машинка #{marker_id}",
                 confidence=0.98,
                 bbox_xyxy=(x_min, y_min, x_max, y_max),
-                center_px=(center_x, center_y),
-                pos_3d_mm=(round(pos_x_mm, 1), round(pos_y_mm, 1), round(pos_z_mm, 1)),
+                center_px=(int(center_x), int(center_y)),
+                pos_3d_mm=(round(pos_x_mm, 1), round(pos_y_mm, 1), round(distance_z_mm, 1)),
                 yaw_deg=round(yaw_deg, 1)
             ))
 

@@ -94,10 +94,13 @@ class VideoCameraStream:
                 sc_frame = self.scrcpy_stream.get_latest_frame()
                 frame = sc_frame if sc_frame is not None else np.zeros((settings.FRAME_HEIGHT, settings.FRAME_WIDTH, 3), dtype=np.uint8)
             elif self.cap and self.cap.isOpened():
-                ret, frame = self.cap.read()
+                # Для сетевых MJPEG потоков сбрасываем застрявшие кадры, забирая только самый последний
+                ret = self.cap.grab()
                 if not ret:
-                    logger.warning("Сбой чтения кадра с камеры. Повтор...")
-                    time.sleep(0.1)
+                    time.sleep(0.02)
+                    continue
+                ret, frame = self.cap.retrieve()
+                if not ret or frame is None:
                     continue
             else:
                 frame = np.zeros((settings.FRAME_HEIGHT, settings.FRAME_WIDTH, 3), dtype=np.uint8)
@@ -152,7 +155,7 @@ class VideoCameraStream:
                     )
             else:
                 self.simulator = None
-                # Пробуем открыть источник через VideoCapture
+                # Для сетевых IP-потоков (HTTP/RTSP) отключаем глубокую буферизацию FFmpeg
                 backend = cv2.CAP_DSHOW if isinstance(source, int) and source >= 0 else cv2.CAP_ANY
                 self.cap = cv2.VideoCapture(source, backend) if backend == cv2.CAP_DSHOW else cv2.VideoCapture(source)
                 
@@ -161,9 +164,11 @@ class VideoCameraStream:
                     self.cap = cv2.VideoCapture(source)
 
                 if self.cap.isOpened():
+                    # Минимальный буфер: 1 кадр, чтобы полностью исключить отставание по времени (lag)
+                    self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
                     self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, settings.FRAME_WIDTH)
                     self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, settings.FRAME_HEIGHT)
-                    logger.info("Источник успешно переключен на: %s", source)
+                    logger.info("Видеоисточник успешно открыт с минимальной буферизацией: %s", source)
                 else:
                     logger.warning("Не удалось открыть источник %s. Возврат в режим DEMO.", source)
                     self.demo_mode = True

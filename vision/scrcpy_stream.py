@@ -113,6 +113,14 @@ class ScrcpyCameraStream:
                 logger.warning("Окно scrcpy не появилось за отведенное время.")
                 return False
 
+            # Принудительно показываем окно на рабочем столе и выводим на передний план
+            try:
+                win32gui.ShowWindow(self.hwnd, win32con.SW_SHOWNORMAL)
+                win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOP, 100, 100, 640, 480, win32con.SWP_SHOWWINDOW)
+                win32gui.UpdateWindow(self.hwnd)
+            except Exception as e:
+                logger.debug("Не удалось позиционировать окно scrcpy: %s", e)
+
             self.thread = threading.Thread(target=self._capture_loop, daemon=True, name="ScrcpyCaptureThread")
             self.thread.start()
             logger.info("Захват камеры смартфона через scrcpy успешно запущен! Окно: HWND=%s", self.hwnd)

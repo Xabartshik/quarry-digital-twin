@@ -31,7 +31,7 @@ logger = logging.getLogger("QuarryTwinServer")
 # Инициализация глобального видеопотока и детектора
 camera_stream = VideoCameraStream(source=settings.CAMERA_SOURCE, demo_mode=settings.DEMO_MODE)
 aruco_detector = ArucoDetector(
-    marker_size_mm=40.0,
+    marker_size_mm=48.0,
     quarry_width_mm=settings.QUARRY_DEFAULT_WIDTH_MM,
     quarry_length_mm=settings.QUARRY_DEFAULT_LENGTH_MM,
     quarry_depth_mm=settings.QUARRY_DEFAULT_DEPTH_MM
