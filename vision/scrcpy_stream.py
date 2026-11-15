@@ -37,8 +37,8 @@ class ScrcpyCameraStream:
     def __init__(self, camera_id: int = 0, scrcpy_path: Optional[str] = None):
         self.camera_id = camera_id
         self.scrcpy_path = scrcpy_path or DEFAULT_SCRCPY_PATH
-        # Человекочитаемый заголовок окна, чтобы пользователь видел его на рабочем столе
-        self.window_title = f"Камера смартфона (Цифровой Двойник) #{os.getpid()}"
+        # Фиксированный заголовок окна, который четко отображается в системе
+        self.window_title = "QuarryTwin_PhoneCamera"
         
         self.process: Optional[subprocess.Popen] = None
         self.hwnd: Optional[int] = None
@@ -89,11 +89,9 @@ class ScrcpyCameraStream:
         ]
 
         try:
-            # Запуск процесса в фоновом режиме без всплывающего черного консольного окна
-            creation_flags = subprocess.CREATE_NO_WINDOW if hasattr(subprocess, "CREATE_NO_WINDOW") else 0
+            # Запуск scrcpy как стандартного графического окна приложения
             self.process = subprocess.Popen(
                 cmd,
-                creationflags=creation_flags,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL
             )
@@ -102,7 +100,7 @@ class ScrcpyCameraStream:
             # Ждем появления окна до 10 секунд (30 попыток по 0.35с)
             for _ in range(30):
                 time.sleep(0.35)
-                # Ищем окно именно класса SDL_app с нашим уникальным заголовком
+                # Ищем окно класса SDL_app с нашим заголовком
                 self.hwnd = win32gui.FindWindow("SDL_app", self.window_title)
                 if not self.hwnd:
                     self.hwnd = win32gui.FindWindow(None, self.window_title)
@@ -115,7 +113,7 @@ class ScrcpyCameraStream:
 
             self.thread = threading.Thread(target=self._capture_loop, daemon=True, name="ScrcpyCaptureThread")
             self.thread.start()
-            logger.info("Захват камеры смартфона через scrcpy успешно запущен!")
+            logger.info("Захват камеры смартфона через scrcpy успешно запущен! Окно: HWND=%s", self.hwnd)
             return True
 
         except Exception as e:
