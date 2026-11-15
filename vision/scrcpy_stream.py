@@ -70,6 +70,8 @@ class ScrcpyCameraStream:
             try:
                 subprocess.run([adb_path, "shell", "am", "force-stop", "com.android.camera"],
                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=2)
+                # Даем Android и камере 0.5 секунды полностью освободить аппаратный сенсор
+                time.sleep(0.5)
             except Exception:
                 pass
 
