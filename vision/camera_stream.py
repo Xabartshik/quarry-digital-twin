@@ -58,7 +58,7 @@ class VideoCameraStream:
         else:
             logger.info("Попытка подключения к видеоисточнику: %s", self.source)
             self.cap = cv2.VideoCapture(self.source)
-            if not self.cap.isOpened():
+            if self.cap is None or not self.cap.isOpened():
                 logger.warning("Не удалось открыть физическую камеру %s! Переключение в DEMO-режим.", self.source)
                 self.demo_mode = True
                 self.simulator = SyntheticQuarrySimulator(
@@ -159,11 +159,11 @@ class VideoCameraStream:
                 backend = cv2.CAP_DSHOW if isinstance(source, int) and source >= 0 else cv2.CAP_ANY
                 self.cap = cv2.VideoCapture(source, backend) if backend == cv2.CAP_DSHOW else cv2.VideoCapture(source)
                 
-                if not self.cap.isOpened() and backend == cv2.CAP_DSHOW:
+                if (self.cap is None or not self.cap.isOpened()) and backend == cv2.CAP_DSHOW:
                     # Резервная попытка через стандартный бэкенд
                     self.cap = cv2.VideoCapture(source)
 
-                if self.cap.isOpened():
+                if self.cap is not None and self.cap.isOpened():
                     # Минимальный буфер: 1 кадр, чтобы полностью исключить отставание по времени (lag)
                     self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
                     self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, settings.FRAME_WIDTH)

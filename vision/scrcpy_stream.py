@@ -3,23 +3,20 @@
 Не требует установки сторонних приложений на сам смартфон.
 """
 
-import os
-import time
 import ctypes
+import logging
+import os
 import subprocess
 import threading
-import logging
-from typing import Optional
-import numpy as np
-import cv2
+import time
 
-try:
-    import win32gui
-    import win32ui
-    import win32con
-    PYWIN32_AVAILABLE = True
-except ImportError:
-    PYWIN32_AVAILABLE = False
+import cv2
+import numpy as np
+import win32con
+import win32gui
+import win32ui
+
+PYWIN32_AVAILABLE = True
 
 from config.settings import settings
 
@@ -34,18 +31,18 @@ class ScrcpyCameraStream:
     Класс управления фоновым процессом scrcpy и захватом видеокадров с камеры телефона.
     """
 
-    def __init__(self, camera_id: int = 0, scrcpy_path: Optional[str] = None):
+    def __init__(self, camera_id: int = 0, scrcpy_path: str | None = None):
         self.camera_id = camera_id
         self.scrcpy_path = scrcpy_path or DEFAULT_SCRCPY_PATH
         # Фиксированный заголовок окна, который четко отображается в системе
         self.window_title = "QuarryTwin_PhoneCamera"
         
-        self.process: Optional[subprocess.Popen] = None
-        self.hwnd: Optional[int] = None
+        self.process: subprocess.Popen | None = None
+        self.hwnd: int | None = None
         self.is_running = False
-        self.thread: Optional[threading.Thread] = None
+        self.thread: threading.Thread | None = None
         self.lock = threading.Lock()
-        self.current_frame: Optional[np.ndarray] = None
+        self.current_frame: np.ndarray | None = None
 
     def start(self) -> bool:
         """Запускает процесс scrcpy и захват кадров."""
@@ -60,20 +57,20 @@ class ScrcpyCameraStream:
         # Очищаем старые зависшие процессы scrcpy
         try:
             subprocess.run(["taskkill", "/F", "/IM", "scrcpy.exe"],
-                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=2)
-        except Exception:
-            pass
+                           check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=2)
+        except (subprocess.SubprocessError, OSError):
+            logger.debug("Не удалось завершить старые процессы scrcpy")
 
         # Снимаем блокировку камеры встроенным приложением Xiaomi HyperOS/MIUI
         adb_path = os.path.join(os.path.dirname(self.scrcpy_path), "adb.exe")
         if os.path.exists(adb_path):
             try:
                 subprocess.run([adb_path, "shell", "am", "force-stop", "com.android.camera"],
-                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=2)
+                               check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=2)
                 # Даем Android и камере 0.5 секунды полностью освободить аппаратный сенсор
                 time.sleep(0.5)
-            except Exception:
-                pass
+            except (subprocess.SubprocessError, OSError):
+                logger.debug("Не удалось отправить команду force-stop через adb")
 
         logger.info("Запуск scrcpy для камеры ID %d (режим software renderer)...", self.camera_id)
         cmd = [
@@ -118,7 +115,7 @@ class ScrcpyCameraStream:
                 win32gui.ShowWindow(self.hwnd, win32con.SW_SHOWNORMAL)
                 win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOP, 100, 100, 640, 480, win32con.SWP_SHOWWINDOW)
                 win32gui.UpdateWindow(self.hwnd)
-            except Exception as e:
+            except (win32gui.error, OSError) as e:
                 logger.debug("Не удалось позиционировать окно scrcpy: %s", e)
 
             self.thread = threading.Thread(target=self._capture_loop, daemon=True, name="ScrcpyCaptureThread")
@@ -126,8 +123,8 @@ class ScrcpyCameraStream:
             logger.info("Захват камеры смартфона через scrcpy успешно запущен! Окно: HWND=%s", self.hwnd)
             return True
 
-        except Exception as e:
-            logger.exception("Ошибка при запуске scrcpy: %s", e)
+        except Exception:
+            logger.exception("Ошибка при запуске scrcpy")
             self.stop()
             return False
 
@@ -177,10 +174,10 @@ class ScrcpyCameraStream:
 
                 time.sleep(0.03)  # ~30 FPS
 
-            except Exception as e:
+            except (win32gui.error, cv2.error, ValueError, OSError):
                 time.sleep(0.05)
 
-    def get_latest_frame(self) -> Optional[np.ndarray]:
+    def get_latest_frame(self) -> np.ndarray | None:
         """Возвращает последний кадр."""
         with self.lock:
             if self.current_frame is None:
@@ -194,11 +191,11 @@ class ScrcpyCameraStream:
             try:
                 self.process.terminate()
                 self.process.wait(timeout=1.0)
-            except Exception:
+            except (subprocess.SubprocessError, OSError):
                 try:
                     self.process.kill()
-                except Exception:
-                    pass
+                except (subprocess.SubprocessError, OSError):
+                    logger.debug("Не удалось принудительно остановить процесс scrcpy")
             self.process = None
         self.hwnd = None
         logger.info("Scrcpy поток остановлен.")

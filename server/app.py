@@ -14,7 +14,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 import cv2
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, WebSocketException
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -102,8 +102,8 @@ async def cv_processing_and_broadcast_loop():
             elapsed = time.time() - start_t
             await asyncio.sleep(max(0.005, sleep_interval - elapsed))
 
-        except Exception as e:
-            logger.exception("Ошибка в конвейере машинного зрения: %s", e)
+        except Exception:
+            logger.exception("Ошибка в конвейере машинного зрения")
             await asyncio.sleep(0.1)
 
 
@@ -202,7 +202,6 @@ async def select_camera(payload: dict):
 
 def generate_mjpeg_stream():
     """Генератор кадров для видеостриминга MJPEG в браузер."""
-    global latest_annotated_frame
     while True:
         if latest_annotated_frame is not None:
             ret, buffer = cv2.imencode('.jpg', latest_annotated_frame, [cv2.IMWRITE_JPEG_QUALITY, 70])
@@ -231,9 +230,9 @@ async def websocket_telemetry_endpoint(websocket: WebSocket, quarry_id: str):
     try:
         while True:
             # Слушаем сообщения от клиента (например, пинг-понг или команды управления)
-            data = await websocket.receive_text()
+            await websocket.receive_text()
     except WebSocketDisconnect:
         ws_manager.disconnect(websocket, quarry_id)
-    except Exception as e:
+    except (RuntimeError, WebSocketException) as e:
         logger.debug("Исключение в WebSocket соединении: %s", e)
         ws_manager.disconnect(websocket, quarry_id)

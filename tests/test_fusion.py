@@ -25,12 +25,13 @@ def test_kalman_filter_predict_and_update():
     dt = 0.1
 
     measured_x = 0.0
+    fx, speed = 0.0, 0.0
     for step in range(1, 15):
         kf.predict(dt)
         # Добавляем измерение с искусственным случайным шумом ±5 мм
         noise = np.random.uniform(-5.0, 5.0)
         measured_x = step * true_vx * dt + noise
-        fx, fy, fz, speed = kf.update(measured_x, 0.0, 0.0)
+        fx, _fy, _fz, speed = kf.update(measured_x, 0.0, 0.0)
 
     # После 15 итераций фильтр должен сгладить координату близко к истинному значению
     expected_x = 15 * true_vx * dt

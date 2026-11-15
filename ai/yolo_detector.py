@@ -38,7 +38,7 @@ class YoloVehicleDetector(BaseDetector):
                 self.net.setPreferableBackend(cv2.dnn.DNN_BACKEND_OPENCV)
                 self.net.setPreferableTarget(cv2.dnn.DNN_TARGET_CPU)
                 logger.info("Нейросетевая модель успешно загружена.")
-            except Exception as e:
+            except (cv2.error, OSError, ValueError) as e:
                 logger.error("Не удалось загрузить веса модели: %s. Активирован резервный режим.", e)
         else:
             logger.warning("Файл модели не указан или не найден (%s). Детектор в режиме ожидания весов.", model_path)
@@ -56,7 +56,7 @@ class YoloVehicleDetector(BaseDetector):
         self.net.setInput(blob)
 
         # Прямой проход (Forward pass)
-        outputs = self.net.forward()
+        _outputs = self.net.forward()
         # Постобработка и Non-Maximum Suppression (NMS) для исключения дубликатов
         # ...
         return results

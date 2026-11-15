@@ -6,14 +6,15 @@
 import logging
 
 from sqlalchemy import create_engine
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from config.settings import settings
 
 logger = logging.getLogger("Database")
 
 # Базовый класс для декларативных ORM-моделей
-Base = declarative_base()
+class Base(DeclarativeBase):
+    pass
 
 # Создание движка базы данных
 engine = create_engine(
@@ -34,8 +35,8 @@ def init_db() -> None:
         logger.info("Инициализация таблиц базы данных...")
         Base.metadata.create_all(bind=engine)
         logger.info("Таблицы базы данных успешно инициализированы.")
-    except Exception as e:
-        logger.exception("Ошибка при инициализации базы данных: %s", e)
+    except Exception:
+        logger.exception("Ошибка при инициализации базы данных")
         raise
 
 

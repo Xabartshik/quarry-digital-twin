@@ -53,7 +53,7 @@ class VehicleState(BaseModel):
     
     # Пространственное положение и динамика
     position: Vector3D = Field(..., description="Координаты X, Y, Z в карьере")
-    rotation: Rotation3D = Field(default_factory=Rotation3D, description="Углы поворота")
+    rotation: Rotation3D = Field(default_factory=lambda: Rotation3D(roll=0.0, pitch=0.0, yaw=0.0), description="Углы поворота")
     speed_mm_s: float = Field(0.0, description="Линейная скорость движения (мм/с)")
     
     # Метаданные обнаружения

@@ -49,7 +49,7 @@ class ArucoDetector(BaseDetector):
             return results
 
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        corners, ids, rejected = self.detector.detectMarkers(gray)
+        corners, ids, _rejected = self.detector.detectMarkers(gray)
 
         if ids is None or len(ids) == 0:
             return results

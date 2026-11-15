@@ -6,7 +6,7 @@
 import json
 import logging
 
-from fastapi import WebSocket
+from fastapi import WebSocket, WebSocketException
 
 logger = logging.getLogger("WebSocketManager")
 
@@ -31,11 +31,10 @@ class ConnectionManager:
 
     def disconnect(self, websocket: WebSocket, quarry_id: str):
         """Удаляет отключившегося клиента."""
-        if quarry_id in self.active_connections:
-            if websocket in self.active_connections[quarry_id]:
-                self.active_connections[quarry_id].remove(websocket)
-                logger.info("Клиент отключился от карьера '%s' (осталось: %d)",
-                            quarry_id, len(self.active_connections[quarry_id]))
+        if quarry_id in self.active_connections and websocket in self.active_connections[quarry_id]:
+            self.active_connections[quarry_id].remove(websocket)
+            logger.info("Клиент отключился от карьера '%s' (осталось: %d)",
+                        quarry_id, len(self.active_connections[quarry_id]))
 
     async def broadcast_to_quarry(self, quarry_id: str, data: dict):
         """Рассылает пакет данных всем подписчикам данного карьера."""
@@ -48,7 +47,7 @@ class ConnectionManager:
         for connection in self.active_connections[quarry_id]:
             try:
                 await connection.send_text(message_str)
-            except Exception as e:
+            except (RuntimeError, WebSocketException) as e:
                 logger.debug("Ошибка отправки данных клиенту: %s", e)
                 disconnected.append(connection)
 

@@ -11,6 +11,7 @@ import logging
 import time
 from datetime import UTC, datetime
 
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from core.fusion import VehicleKalmanFilter
@@ -71,6 +72,7 @@ class QuarryStateManager:
             speed_mm_s=0.0,
             source=DetectionSource.SIMULATED,
             confidence=1.0,
+            is_visible=True,
             last_updated=datetime.now(UTC)
         )
         self.vehicles[vehicle_id] = initial_state
@@ -202,26 +204,26 @@ class MultiQuarryManager:
             # Инициализируем менеджеры в памяти
             for q in quarries:
                 instance = QuarryStateManager(
-                    quarry_id=q.id,
-                    name=q.name,
-                    width_mm=q.width_mm,
-                    length_mm=q.length_mm,
-                    depth_mm=q.depth_mm
+                    quarry_id=str(q.id),
+                    name=str(q.name),
+                    width_mm=float(q.width_mm),
+                    length_mm=float(q.length_mm),
+                    depth_mm=float(q.depth_mm)
                 )
                 # Подгружаем технику карьера
                 for v in q.vehicles:
                     instance.register_vehicle(
-                        vehicle_id=v.id,
-                        name=v.name,
+                        vehicle_id=str(v.id),
+                        name=str(v.name),
                         v_type=VehicleType(v.vehicle_type) if v.vehicle_type in VehicleType.__members__ else VehicleType.DUMP_TRUCK,
                         init_x=500.0,
                         init_y=500.0,
                         init_z=0.0
                     )
-                self.quarry_instances[q.id] = instance
+                self.quarry_instances[str(q.id)] = instance
 
-        except Exception as e:
-            logger.exception("Ошибка при загрузке карьеров из БД: %s", e)
+        except Exception:
+            logger.exception("Ошибка при загрузке карьеров из БД")
         finally:
             db.close()
 
@@ -264,7 +266,7 @@ class MultiQuarryManager:
                 )
                 db.add(log_entry)
             db.commit()
-        except Exception as e:
+        except SQLAlchemyError as e:
             db.rollback()
             logger.error("Ошибка сохранения телеметрии в БД: %s", e)
         finally:
