@@ -30,12 +30,41 @@
 
 ## Быстрый старт
 
-### 1. Установка зависимостей
+### 1. Автоматическая установка и запуск
+
+- **Windows:**
+  - Дважды кликните по `install.bat` (создаст `.venv` и установит все зависимости).
+  - Для запуска используйте `run.bat` (автоматически использует `.venv`).
+
+- **Linux / macOS:**
+  ```bash
+  chmod +x install.sh run.sh
+  ./install.sh
+  ./run.sh
+  ```
+
+### 2. Ручная настройка с использованием виртуального окружения (`.venv`)
+
+**Создание и активация окружения:**
+```bash
+# Windows (PowerShell)
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+
+# Windows (cmd.exe)
+.\.venv\Scripts\activate.bat
+
+# Linux / macOS
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+**Установка зависимостей:**
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Запуск системы
+**Запуск системы:**
 ```bash
 python main.py
 ```
@@ -47,7 +76,10 @@ python main.py
 
 ### 3. Запуск тестов
 ```bash
-python -m pytest tests/
+# В активированном виртуальном окружении
+pytest tests/
+# или напрямую через python в .venv:
+.\.venv\Scripts\python -m pytest tests/
 ```
 
 ---
